@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mapa de obras por ubicación</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1e2933;
+      --accent: #0f766e;
+      --accent-dark: #115e59;
+    }
+    * { box-sizing: border-box; }
+    html, body, #map {
+      height: 100%;
+      width: 100%;
+    }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--ink);
+    }
+    #map {
+      min-height: 100vh;
+    }
+    .summary {
+      color: #ffffff;
+      font-size: 52px;
+      font-weight: 800;
+      left: 72px;
+      position: fixed;
+      text-shadow: 0 2px 3px rgba(0, 0, 0, .9), 0 0 10px rgba(0, 0, 0, .65), 0 0 18px rgba(0, 0, 0, .45);
+      top: 18px;
+      z-index: 900;
+    }
+    .summary strong {
+      color: #ffffff;
+      font-size: 68px;
+      font-weight: 900;
+    }
+    .fullscreen-button {
+      align-items: center;
+      background: #ffffff;
+      border: 2px solid #111827;
+      border-radius: 8px;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, .35);
+      color: #111827;
+      cursor: pointer;
+      display: flex;
+      font-size: 14px;
+      font-weight: 700;
+      gap: 8px;
+      padding: 10px 12px;
+      position: fixed;
+      right: 18px;
+      top: 18px;
+      z-index: 99999;
+    }
+    .fullscreen-button:hover {
+      background: #ffffff;
+    }
+    .fullscreen-button svg {
+      height: 18px;
+      width: 18px;
+    }
+    .marker {
+      align-items: center;
+      background: var(--accent);
+      border: 2px solid #fff;
+      border-radius: 999px;
+      box-shadow: 0 2px 10px rgba(15, 23, 42, .3);
+      color: white;
+      display: flex;
+      font-weight: 700;
+      justify-content: center;
+      line-height: 1;
+    }
+    .count-label {
+      background: #ffffff;
+      border: 1px solid rgba(15, 118, 110, .28);
+      border-radius: 8px;
+      box-shadow: 0 3px 14px rgba(15, 23, 42, .18);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 8px;
+      white-space: nowrap;
+    }
+    .count-label strong {
+      color: var(--accent-dark);
+    }
+    .leaflet-tooltip-top.count-label::before {
+      border-top-color: #ffffff;
+    }
+    .leaflet-popup-content {
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="summary">OBRAS 2026: <strong>69</strong></div>
+  <button class="fullscreen-button" id="fullscreen-button" type="button" aria-label="Pantalla completa">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="M8 3H5a2 2 0 0 0-2 2v3"></path>
+      <path d="M16 3h3a2 2 0 0 1 2 2v3"></path>
+      <path d="M8 21H5a2 2 0 0 1-2-2v-3"></path>
+      <path d="M16 21h3a2 2 0 0 0 2-2v-3"></path>
+    </svg>
+    Pantalla completa
+  </button>
+  <div id="map" aria-label="Mapa de obras por ubicación"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const DATA = [{"ubicacion": "Madrid", "total_obras": 17, "lat": 40.4168, "lng": -3.7038}, {"ubicacion": "Barcelona", "total_obras": 9, "lat": 41.3874, "lng": 2.1686}, {"ubicacion": "Coruña", "total_obras": 5, "lat": 43.3623, "lng": -8.4115}, {"ubicacion": "Zaragoza", "total_obras": 5, "lat": 41.6488, "lng": -0.8891}, {"ubicacion": "Alicante", "total_obras": 4, "lat": 38.3452, "lng": -0.481}, {"ubicacion": "Logroño", "total_obras": 3, "lat": 42.4627, "lng": -2.4449}, {"ubicacion": "Santander", "total_obras": 3, "lat": 43.4623, "lng": -3.8099}, {"ubicacion": "Lugo", "total_obras": 2, "lat": 43.0097, "lng": -7.5568}, {"ubicacion": "Pontevedra", "total_obras": 2, "lat": 42.4333, "lng": -8.6333}, {"ubicacion": "Salamanca", "total_obras": 2, "lat": 40.9701, "lng": -5.6635}, {"ubicacion": "Valladolid", "total_obras": 2, "lat": 41.6523, "lng": -4.7245}, {"ubicacion": "Toledo", "total_obras": 2, "lat": 39.8628, "lng": -4.0273}, {"ubicacion": "Caceres", "total_obras": 1, "lat": 39.4753, "lng": -6.3724}, {"ubicacion": "Nalon", "total_obras": 1, "lat": 43.2964, "lng": -5.6842}, {"ubicacion": "Hondarribia", "total_obras": 1, "lat": 43.3686, "lng": -1.7926}, {"ubicacion": "Azores", "total_obras": 1, "lat": 37.7412, "lng": -25.6756}, {"ubicacion": "Renteria", "total_obras": 1, "lat": 43.3119, "lng": -1.9008}, {"ubicacion": "Aviles", "total_obras": 1, "lat": 43.556, "lng": -5.9247}, {"ubicacion": "Burgos", "total_obras": 1, "lat": 42.3439, "lng": -3.6969}, {"ubicacion": "Malaga", "total_obras": 1, "lat": 36.7213, "lng": -4.4214}, {"ubicacion": "Alcañiz", "total_obras": 1, "lat": 41.05, "lng": -0.1333}, {"ubicacion": "Canarias", "total_obras": 1, "lat": 28.2916, "lng": -16.6291}, {"ubicacion": "Sevilla", "total_obras": 1, "lat": 37.3891, "lng": -5.9845}, {"ubicacion": "Cordoba", "total_obras": 1, "lat": 37.8882, "lng": -4.7794}, {"ubicacion": "Santiago Compostela", "total_obras": 1, "lat": 42.8782, "lng": -8.5448}];
+    const MISSING = [];
+    const map = L.map('map', { zoomControl: true }).setView([40.35, -3.7], 6);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 18,
+      attribution: 'Tiles &copy; Esri'
+    }).addTo(map);
+
+    const maxCount = Math.max(...DATA.map(item => item.total_obras), 1);
+    const bounds = [];
+
+    DATA.forEach(item => {
+      const size = 28 + Math.round((item.total_obras / maxCount) * 30);
+      const icon = L.divIcon({
+        className: '',
+        html: `<div class="marker" style="width:${size}px;height:${size}px;font-size:${Math.max(12, Math.round(size / 3))}px">${item.total_obras}</div>`,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2]
+      });
+      L.marker([item.lat, item.lng], { icon })
+        .bindPopup(`<strong>${item.ubicacion}</strong><br>${item.total_obras} obra${item.total_obras === 1 ? '' : 's'}`)
+        .bindTooltip(`${item.ubicacion} · <strong>${item.total_obras}</strong> obra${item.total_obras === 1 ? '' : 's'}`, {
+          permanent: true,
+          direction: 'top',
+          offset: [0, -Math.round(size / 2) - 6],
+          className: 'count-label'
+        })
+        .addTo(map);
+      bounds.push([item.lat, item.lng]);
+    });
+
+    if (bounds.length) {
+      map.fitBounds(bounds, { padding: [32, 32] });
+    }
+
+    const fullscreenButton = document.getElementById('fullscreen-button');
+    fullscreenButton.addEventListener('click', async () => {
+      const root = document.documentElement;
+      if (!document.fullscreenElement) {
+        await root.requestFullscreen();
+        fullscreenButton.style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>
